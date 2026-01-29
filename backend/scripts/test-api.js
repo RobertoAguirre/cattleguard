@@ -5,10 +5,11 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 
-dotenv.config();
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Cargar .env desde la raíz del proyecto (gusano/.env)
+dotenv.config({ path: path.join(__dirname, '..', '..', '.env') });
 
 const API_URL = process.env.API_URL || 'http://localhost:3000';
 const BASE_URL = `${API_URL}/api`;

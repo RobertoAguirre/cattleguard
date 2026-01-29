@@ -1,15 +1,13 @@
 import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
-import dotenv from 'dotenv';
 import multer from 'multer';
 import authRoutes from './routes/auth.js';
 import scanRoutes from './routes/scans.js';
 import animalRoutes from './routes/animals.js';
 import webhookRoutes from './routes/webhooks.js';
 
-// Cargar variables de entorno
-dotenv.config();
+// .env se carga en server.js desde la raíz del proyecto (gusano/.env)
 
 const app = express();
 

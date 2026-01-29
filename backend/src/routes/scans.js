@@ -2,7 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import mongoose from 'mongoose';
 import Scan from '../models/Scan.js';
-import { protect } from '../middleware/auth.js';
+import { optionalAuth } from '../middleware/auth.js';
 import { uploadImage } from '../utils/cloudinary.js';
 import { analyzeWithBothModels } from '../utils/roboflow.js';
 import { sendAlert } from '../utils/whatsapp.js';
@@ -94,8 +94,14 @@ const upload = multer({
     fileSize: 10 * 1024 * 1024 // 10MB
   },
   fileFilter: (req, file, cb) => {
-    // Solo aceptar imágenes
-    if (file.mimetype.startsWith('image/')) {
+    const mimetype = (file.mimetype || '').toLowerCase();
+    const ext = (file.originalname || file.filename || '').toLowerCase().replace(/^.*\./, '');
+    const imageMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+    const isImageMime = mimetype.startsWith('image/') || imageMimes.includes(mimetype);
+    const isImageExt = imageExts.includes(ext);
+    // Aceptar si el MIME es de imagen o si la extensión es de imagen (p. ej. cliente envía application/octet-stream)
+    if (isImageMime || isImageExt) {
       cb(null, true);
     } else {
       cb(new Error('Solo se permiten archivos de imagen'), false);
@@ -107,7 +113,7 @@ const upload = multer({
  * POST /api/scans
  * Crea un nuevo escaneo (protegido, multipart)
  */
-router.post('/', protect, upload.fields([
+router.post('/', optionalAuth, upload.fields([
   { name: 'thermal', maxCount: 1 },
   { name: 'rgb', maxCount: 1 }
 ]), async (req, res) => {
@@ -324,7 +330,7 @@ const defaultAiResults = () => ({
  * Body: multipart con campos rgb[] (o múltiples "rgb") y opcional thermal[].
  * Se emparejan por índice: rgb[0] + thermal[0], rgb[1] + thermal[1], etc. Si no hay thermal, se usa la misma RGB como placeholder.
  */
-router.post('/batch', protect, upload.fields([
+router.post('/batch', optionalAuth, upload.fields([
   { name: 'rgb', maxCount: BATCH_MAX_IMAGES },
   { name: 'thermal', maxCount: BATCH_MAX_IMAGES }
 ]), async (req, res) => {
@@ -445,7 +451,7 @@ router.post('/batch', protect, upload.fields([
  * GET /api/scans
  * Obtiene todos los escaneos del usuario (protegido)
  */
-router.get('/', protect, async (req, res) => {
+router.get('/', optionalAuth, async (req, res) => {
   try {
     const { animalId } = req.query;
     const query = { user: req.user._id };
@@ -477,7 +483,7 @@ router.get('/', protect, async (req, res) => {
  * GET /api/scans/:id
  * Obtiene un escaneo específico (protegido)
  */
-router.get('/:id', protect, async (req, res) => {
+router.get('/:id', optionalAuth, async (req, res) => {
   try {
     // Validar formato de ObjectId
     if (!req.params.id || !mongoose.Types.ObjectId.isValid(req.params.id)) {

@@ -1,8 +1,14 @@
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-// Cargar .env ANTES de importar app (las rutas cargan cloudinary, roboflow, etc.
-// y leen process.env al cargar; si dotenv no ha corrido, ven todo undefined)
-dotenv.config();
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Cargar .env: primero raíz del proyecto (gusano/.env), luego backend/.env como fallback
+const rootEnv = path.join(__dirname, '..', '..', '.env');
+const backendEnv = path.join(__dirname, '..', '.env');
+dotenv.config({ path: rootEnv });
+dotenv.config({ path: backendEnv });
 
 const { default: app } = await import('./app.js');
 
