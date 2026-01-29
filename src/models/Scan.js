@@ -6,6 +6,16 @@ const scanSchema = new mongoose.Schema({
     ref: 'User',
     required: [true, 'El usuario es requerido']
   },
+  animal: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Animal',
+    required: false // Opcional para mantener compatibilidad
+  },
+  scanType: {
+    type: String,
+    enum: ['lateral', 'frontal', 'rear', 'head_close', 'legs', 'other'],
+    default: 'other'
+  },
   images: {
     thermal: {
       type: String, // Cloudinary URL
@@ -61,6 +71,21 @@ const scanSchema = new mongoose.Schema({
         type: String
       }]
     },
+    // Resultados del modelo Wound Object Detection (heridas)
+    wound: {
+      detections: [{
+        type: Object
+      }],
+      confidence: {
+        type: Number,
+        min: 0,
+        max: 1,
+        default: 0
+      },
+      classes: [{
+        type: String
+      }]
+    },
     // Resultados combinados
     combined: {
       detections: [{
@@ -81,7 +106,41 @@ const scanSchema = new mongoose.Schema({
         name: String,
         confidence: Number,
         model: String // 'model1' o 'model2'
-      }]
+      }],
+      wounds: [{
+        class: String,
+        confidence: Number,
+        x: Number,
+        y: Number,
+        width: Number,
+        height: Number
+      }],
+      woundsCount: {
+        type: Number,
+        default: 0
+      },
+      // Resumen de indicadores para frontend
+      summary: {
+        status: String,
+        statusLabel: String,
+        message: String,
+        hasWounds: Boolean,
+        woundsCount: Number,
+        hasDiseases: Boolean,
+        diseasesCount: Number,
+        topWound: { class: String, confidence: Number },
+        topDiseases: [{ name: String, confidence: Number }],
+        // type es palabra reservada en Mongoose: campo "type" con Schema type String
+        indicators: [{
+          type: { type: String },
+          id: String,
+          label: String,
+          value: String,
+          severity: String,
+          rawConfidence: Number
+        }],
+        confidencePercent: String
+      }
     }
   },
   status: {

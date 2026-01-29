@@ -1,7 +1,10 @@
-import app from './app.js';
 import dotenv from 'dotenv';
 
+// Cargar .env ANTES de importar app (las rutas cargan cloudinary, roboflow, etc.
+// y leen process.env al cargar; si dotenv no ha corrido, ven todo undefined)
 dotenv.config();
+
+const { default: app } = await import('./app.js');
 
 const PORT = process.env.PORT || 3000;
 

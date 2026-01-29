@@ -5,6 +5,8 @@ import dotenv from 'dotenv';
 import multer from 'multer';
 import authRoutes from './routes/auth.js';
 import scanRoutes from './routes/scans.js';
+import animalRoutes from './routes/animals.js';
+import webhookRoutes from './routes/webhooks.js';
 
 // Cargar variables de entorno
 dotenv.config();
@@ -36,6 +38,8 @@ connectDB();
 // Rutas
 app.use('/api/auth', authRoutes);
 app.use('/api/scans', scanRoutes);
+app.use('/api/animals', animalRoutes);
+app.use('/api/webhooks', webhookRoutes);
 
 // Ruta de salud
 app.get('/health', (req, res) => {
@@ -67,11 +71,13 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 404
+// 404 - log para depurar si llegan requests inesperados
 app.use((req, res) => {
+  console.warn(`⚠️ 404: ${req.method} ${req.originalUrl}`);
   res.status(404).json({
     success: false,
-    message: 'Ruta no encontrada'
+    message: 'Ruta no encontrada',
+    received: `${req.method} ${req.originalUrl}`
   });
 });
 
