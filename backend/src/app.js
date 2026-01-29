@@ -11,8 +11,13 @@ import webhookRoutes from './routes/webhooks.js';
 
 const app = express();
 
-// Middleware
-app.use(cors());
+// CORS: permitir todos los orígenes (MVP en cambio continuo)
+app.use(cors({
+  origin: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  credentials: true,
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

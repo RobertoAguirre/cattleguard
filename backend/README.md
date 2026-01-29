@@ -55,7 +55,12 @@ TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
 # Usuario demo (opcional): si el frontend no envía token, se usan estos datos
 # DEMO_USER_EMAIL=demo@cattleguard.app
 # DEMO_USER_PASSWORD=demo123
+
+# CORS: de momento se aceptan todos los orígenes (MVP en cambio continuo).
+# Más adelante se puede restringir con CORS_ORIGIN.
 ```
+
+**CORS:** Por ahora se permiten todos los orígenes (cualquier IP/dominio). Métodos: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`. Cabeceras: `Content-Type`, `Authorization`, `Accept`. `credentials: true`.
 
 **Nota:** Las rutas `/api/scans` aceptan requests sin token; en ese caso se asigna un usuario "demo" (creado automáticamente si no existe). Así el frontend puede usarse sin login durante desarrollo.
 
