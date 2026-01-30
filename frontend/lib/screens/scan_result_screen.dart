@@ -33,11 +33,11 @@ class ScanResultScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
                 child: Image.network(
                   rgbUrl,
-                  height: 200,
+                  height: 360,
                   width: double.infinity,
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => const SizedBox(
-                    height: 200,
+                    height: 360,
                     child: Center(child: Icon(Icons.broken_image, size: 48)),
                   ),
                 ),

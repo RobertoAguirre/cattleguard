@@ -1,9 +1,8 @@
-/// URL base de la API (backend). Cambiar en producción.
-/// Para desarrollo local: http://localhost:3000
-/// Para Vercel/producción: https://tu-backend.vercel.app o tu dominio
+/// URL base de la API (backend). Por defecto: backend en Render.
+/// Para desarrollo local: flutter run --dart-define=API_BASE_URL=http://localhost:3000
 const String apiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
-  defaultValue: 'http://localhost:3000',
+  defaultValue: 'https://cattleguard.onrender.com',
 );
 
 const String apiPrefix = '/api';
