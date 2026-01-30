@@ -1,0 +1,9 @@
+{
+  "name": "CattleGuard",
+  "short_name": "CattleGuard",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0d9488",
+  "description": "Detección de enfermedades en ganado"
+}
