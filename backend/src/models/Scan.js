@@ -119,6 +119,10 @@ const scanSchema = new mongoose.Schema({
         type: Number,
         default: 0
       },
+      imageDimensions: {
+        width: Number,
+        height: Number
+      },
       // Resumen de indicadores para frontend
       summary: {
         status: String,
