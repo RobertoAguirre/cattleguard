@@ -12,11 +12,13 @@ class ScanResultScreen extends StatelessWidget {
     final status = summary?['status'] ?? 'healthy';
     final statusLabel = summary?['statusLabel'] ?? '—';
     final message = summary?['message'] ?? '';
+    final diagnosticoGeneral = summary?['diagnosticoGeneral'] as String?;
     final indicators = summary?['indicators'] as List<dynamic>? ?? [];
     final diagnoses = summary?['diagnoses'] as List<dynamic>? ?? [];
     final woundsCount = summary?['woundsCount'] ?? 0;
     final diseasesCount = summary?['diseasesCount'] ?? 0;
     final confidencePercent = summary?['confidencePercent'] ?? '—';
+    final modelsAgree = summary?['modelsAgree'] as bool? ?? false;
 
     final statusColor = _colorForStatus(status);
     final images = scan['images'] as Map<String, dynamic>?;
@@ -40,7 +42,7 @@ class ScanResultScreen extends StatelessWidget {
                   height: 360,
                   width: double.infinity,
                   child: _ImageWithOverlays(
-                    imageUrl: rgbUrl!,
+                    imageUrl: rgbUrl,
                     wounds: wounds,
                     imageWidth: imgW,
                     imageHeight: imgH,
@@ -48,39 +50,82 @@ class ScanResultScreen extends StatelessWidget {
                 ),
               ),
             const SizedBox(height: 20),
-            Card(
-              color: statusColor.withValues(alpha: 0.15),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Icon(Icons.analytics, size: 40, color: statusColor),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            statusLabel,
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                  color: statusColor,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(message),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Confianza: $confidencePercent',
-                            style: TextStyle(color: Colors.grey[700], fontSize: 12),
-                          ),
-                        ],
+            // Veredicto principal (impacto visual para pitch/demo)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
+              decoration: BoxDecoration(
+                color: statusColor.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: statusColor.withValues(alpha: 0.5), width: 2),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(_iconForStatus(status), size: 36, color: statusColor),
+                      const SizedBox(width: 12),
+                      Text(
+                        statusLabel,
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          color: statusColor,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    message,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Confianza: $confidencePercent',
+                    style: TextStyle(color: Colors.grey[700], fontSize: 13),
+                  ),
+                  if (modelsAgree) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.check_circle_outline, size: 18, color: Colors.green[700]),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Los dos modelos coinciden',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.green[800],
+                          ),
+                        ),
+                      ],
                     ),
                   ],
-                ),
+                ],
               ),
             ),
+            if (diagnosticoGeneral != null && diagnosticoGeneral.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Text(
+                'Diagnóstico general',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    diagnosticoGeneral,
+                    style: const TextStyle(height: 1.5, fontSize: 14),
+                  ),
+                ),
+              ),
+            ],
             if (woundsCount > 0 || diseasesCount > 0) ...[
               const SizedBox(height: 16),
               Row(
@@ -270,6 +315,27 @@ class ScanResultScreen extends StatelessWidget {
               icon: const Icon(Icons.arrow_back),
               label: const Text('Volver'),
             ),
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.info_outline, size: 20, color: Colors.grey[700]),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Resultado asistido por IA. No sustituye el criterio de un veterinario. Consulte a un profesional para el diagnóstico definitivo.',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[800], height: 1.4),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -286,6 +352,19 @@ class ScanResultScreen extends StatelessWidget {
         return Colors.green;
       default:
         return Colors.grey;
+    }
+  }
+
+  IconData _iconForStatus(String status) {
+    switch (status) {
+      case 'critical':
+        return Icons.warning_amber_rounded;
+      case 'suspicious':
+        return Icons.info_outline_rounded;
+      case 'healthy':
+        return Icons.check_circle_rounded;
+      default:
+        return Icons.help_outline_rounded;
     }
   }
 
@@ -342,22 +421,22 @@ class _ImageWithOverlays extends StatelessWidget {
               ),
             ),
             if (wounds.isNotEmpty)
-              ...wounds.map<Widget>((w) {
-                final map = w as Map<String, dynamic>;
+              ...wounds.map<Widget>((wound) {
+                final map = wound as Map<String, dynamic>;
                 final x = (map['x'] as num?)?.toDouble() ?? 0.0;
                 final y = (map['y'] as num?)?.toDouble() ?? 0.0;
-                final w = (map['width'] as num?)?.toDouble() ?? 0.0;
-                final h = (map['height'] as num?)?.toDouble() ?? 0.0;
+                final widthPx = (map['width'] as num?)?.toDouble() ?? 0.0;
+                final heightPx = (map['height'] as num?)?.toDouble() ?? 0.0;
                 final confidence = (map['confidence'] as num?)?.toDouble() ?? 0.0;
                 final classKey = map['class'] as String? ?? 'wound';
                 final label = _woundLabel(classKey);
                 // Roboflow suele devolver centro (x,y) y tamaño (width, height)
-                final left = x - w / 2;
-                final top = y - h / 2;
+                final left = x - widthPx / 2;
+                final top = y - heightPx / 2;
                 final leftD = offsetX + left * scale;
                 final topD = offsetY + top * scale;
-                final widthD = w * scale;
-                final heightD = h * scale;
+                final widthD = widthPx * scale;
+                final heightD = heightPx * scale;
                 final color = confidence > 0.6 ? Colors.red : Colors.orange;
                 return Positioned(
                   left: leftD,

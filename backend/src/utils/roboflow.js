@@ -128,6 +128,35 @@ function getDiagnosisInfo(classKey) {
 }
 
 /**
+ * Genera un diagnóstico general en texto a partir de los hallazgos (sin LLM).
+ */
+function buildDiagnosticoGeneral({ classification, combinedConfidence, diagnoses, wounds, sortedDiseases, isHealthy }) {
+  const precision = Math.round(combinedConfidence * 100);
+  const woundLabels = wounds.slice(0, 3).map(w => getDiagnosisInfo(w.class).label);
+  const diseaseLabels = sortedDiseases.slice(0, 3).map(d => getDiagnosisInfo(d.name).label);
+
+  if (isHealthy && wounds.length === 0) {
+    return `No se detectaron signos de enfermedad ni heridas en el análisis (precisión ${precision}%). El animal presenta un estado aparente dentro de lo normal. Se recomienda mantener la observación y las buenas prácticas de manejo.`;
+  }
+
+  const parts = [];
+  if (wounds.length > 0) {
+    parts.push(`Se detectaron ${wounds.length} herida(s): ${woundLabels.join(', ')}.`);
+  }
+  if (sortedDiseases.length > 0) {
+    parts.push(`Signos compatibles con: ${diseaseLabels.join(', ')}.`);
+  }
+  const hallazgos = parts.join(' ');
+  const recomendacion = classification === 'critical'
+    ? 'Se recomienda revisión veterinaria con prioridad.'
+    : classification === 'suspicious'
+      ? 'Se recomienda revisión veterinaria o inspección directa para confirmar.'
+      : 'Mantener observación.';
+
+  return `Diagnóstico de apoyo (precisión ${precision}%): ${hallazgos} ${recomendacion} Este resultado es orientativo y no sustituye el criterio de un profesional.`;
+}
+
+/**
  * Analiza una imagen con un modelo específico de Roboflow
  * @param {string} imageUrl - URL de la imagen a analizar
  * @param {string} modelUrl - URL del endpoint del modelo
@@ -372,6 +401,11 @@ export async function analyzeWithBothModels(imageUrl) {
     const statusLabels = { healthy: 'Sano', suspicious: 'Sospechoso', critical: 'Crítico' };
     const statusLabel = statusLabels[classification] || classification;
 
+    // Consenso entre modelos de enfermedades (mejora credibilidad / precisión percibida)
+    const model1HasFindings = (model1Result.classes || []).some(c => !healthyClasses.includes(c));
+    const model2HasFindings = (model2Result.classes || []).some(c => !healthyClasses.includes(c));
+    const modelsAgree = model1HasFindings === model2HasFindings;
+
     let message = '';
     if (isHealthy && !hasWounds) {
       message = 'No se detectaron enfermedades ni heridas.';
@@ -455,10 +489,20 @@ export async function analyzeWithBothModels(imageUrl) {
       });
     }
 
+    const diagnosticoGeneral = buildDiagnosticoGeneral({
+      classification,
+      combinedConfidence,
+      diagnoses,
+      wounds,
+      sortedDiseases,
+      isHealthy
+    });
+
     const summary = {
       status: classification,
       statusLabel,
       message,
+      diagnosticoGeneral,
       hasWounds,
       woundsCount: wounds.length,
       hasDiseases,
@@ -467,7 +511,8 @@ export async function analyzeWithBothModels(imageUrl) {
       topDiseases: sortedDiseases.slice(0, 3).map(d => ({ name: d.name, confidence: d.confidence })),
       indicators,
       diagnoses,
-      confidencePercent: (combinedConfidence * 100).toFixed(0) + '%'
+      confidencePercent: (combinedConfidence * 100).toFixed(0) + '%',
+      modelsAgree
     };
 
     return {

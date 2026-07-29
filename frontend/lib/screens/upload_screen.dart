@@ -1,10 +1,18 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
 import '../services/api_service.dart';
 
+/// URL de imagen de ejemplo para el modo demo (ganado - uso demostrativo).
+const String kDemoImageUrl =
+    'https://images.unsplash.com/photo-1546445317-29f4545e9d53?w=800';
+
 class UploadScreen extends StatefulWidget {
-  const UploadScreen({super.key});
+  const UploadScreen({super.key, this.openCameraFirst = false});
+
+  /// Si true, al abrir la pantalla se ofrece abrir la cámara de inmediato.
+  final bool openCameraFirst;
 
   @override
   State<UploadScreen> createState() => _UploadScreenState();
@@ -18,6 +26,36 @@ class _UploadScreenState extends State<UploadScreen> {
   XFile? _thermalFile;
   List<int>? _rgbPreviewBytes;
   List<int>? _thermalPreviewBytes;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.openCameraFirst) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _openCameraDirect());
+    }
+  }
+
+  /// Abre la cámara directamente (sin sheet) — ideal para móvil y "wow".
+  Future<void> _openCameraDirect() async {
+    try {
+      final file = await _picker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 85,
+      );
+      if (file != null && mounted) {
+        final bytes = await file.readAsBytes();
+        setState(() {
+          _rgbFile = file;
+          _rgbPreviewBytes = bytes;
+          _thermalFile = null;
+          _thermalPreviewBytes = null;
+          _error = null;
+        });
+      }
+    } catch (e) {
+      setState(() => _error = e.toString());
+    }
+  }
 
   Future<void> _pickImage(bool isThermal) async {
     try {
@@ -58,6 +96,37 @@ class _UploadScreenState extends State<UploadScreen> {
       }
     } catch (e) {
       setState(() => _error = e.toString());
+    }
+  }
+
+  Future<void> _runDemo() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final response = await http.get(Uri.parse(kDemoImageUrl));
+      if (response.statusCode != 200) throw Exception('No se pudo cargar la imagen de demo');
+      final rgbBytes = response.bodyBytes;
+      final res = await ApiService.uploadScan(
+        rgbBytes: rgbBytes,
+        thermalBytes: rgbBytes,
+        source: 'demo',
+      );
+      final status = res['_status'] as int?;
+      if (status == 201 && res['scan'] != null && mounted) {
+        Navigator.of(context).pop(res['scan']);
+      } else {
+        setState(() {
+          _error = res['message'] as String? ?? res['error'] as String? ?? 'Error en demo';
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
     }
   }
 
@@ -109,6 +178,26 @@ class _UploadScreenState extends State<UploadScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // CTA principal: cámara (uso desde celular / wow)
+              FilledButton.icon(
+                onPressed: _loading ? null : _openCameraDirect,
+                icon: const Icon(Icons.camera_alt, size: 28),
+                label: const Text('Tomar foto con cámara'),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  textStyle: const TextStyle(fontSize: 18),
+                ),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: _loading ? null : () => _pickImage(false),
+                icon: const Icon(Icons.photo_library),
+                label: const Text('Subir desde galería'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+              ),
+              const SizedBox(height: 24),
               Text(
                 'Sube una foto del ganado (RGB). Opcional: imagen térmica.',
                 style: Theme.of(context).textTheme.bodyLarge,
@@ -166,9 +255,9 @@ class _UploadScreenState extends State<UploadScreen> {
                   style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
               ],
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
               FilledButton.icon(
-                onPressed: _loading ? null : _upload,
+                onPressed: (_loading || _rgbFile == null) ? null : _upload,
                 icon: _loading
                     ? const SizedBox(
                         width: 20,
@@ -176,7 +265,26 @@ class _UploadScreenState extends State<UploadScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.cloud_upload),
-                label: Text(_loading ? 'Analizando…' : 'Subir y analizar'),
+                label: Text(_loading ? 'Analizando…' : 'Analizar esta foto'),
+              ),
+              const SizedBox(height: 24),
+              const Divider(),
+              const SizedBox(height: 8),
+              Text(
+                '¿Primera vez? Prueba el flujo completo con una imagen de ejemplo.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Colors.grey[700],
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: _loading ? null : _runDemo,
+                icon: const Icon(Icons.play_circle_outline),
+                label: const Text('Ver demo'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Theme.of(context).colorScheme.primary,
+                ),
               ),
             ],
           ),

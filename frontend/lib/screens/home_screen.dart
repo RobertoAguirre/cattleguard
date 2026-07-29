@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import '../services/api_service.dart';
 import 'login_screen.dart';
 import 'upload_screen.dart';
@@ -92,22 +93,83 @@ class _HomeScreenState extends State<HomeScreen> {
                 )
               : _scans.isEmpty
                   ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.photo_camera_outlined,
-                              size: 64, color: Colors.grey[400]),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Sin escaneos aún',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Toca el botón + para analizar una foto',
-                            style: TextStyle(color: Colors.grey[600]),
-                          ),
-                        ],
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.camera_alt_outlined,
+                                size: 72, color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.8)),
+                            const SizedBox(height: 24),
+                            Text(
+                              'Escanea ganado con la cámara',
+                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Toma una foto o sube una imagen para detectar signos de enfermedad.',
+                              style: TextStyle(color: Colors.grey[600]),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 24),
+                            FilledButton.icon(
+                              onPressed: () async {
+                                final navigator = Navigator.of(context);
+                                final result = await navigator.push<Map<String, dynamic>>(
+                                  MaterialPageRoute(
+                                    builder: (_) => const UploadScreen(openCameraFirst: true),
+                                  ),
+                                );
+                                if (!mounted) return;
+                                if (result != null) {
+                                  navigator.push(
+                                    MaterialPageRoute(
+                                      builder: (_) => ScanResultScreen(scan: result),
+                                    ),
+                                  );
+                                }
+                                _loadScans();
+                              },
+                              icon: const Icon(Icons.camera_alt),
+                              label: const Text('Abrir cámara'),
+                              style: FilledButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            TextButton.icon(
+                              onPressed: () async {
+                                setState(() => _loading = true);
+                                final navigator = Navigator.of(context);
+                                try {
+                                  final bytes = (await http.get(Uri.parse(
+                                    'https://images.unsplash.com/photo-1546445317-29f4545e9d53?w=800',
+                                  ))).bodyBytes;
+                                  final res = await ApiService.uploadScan(
+                                    rgbBytes: bytes,
+                                    thermalBytes: bytes,
+                                    source: 'demo',
+                                  );
+                                  if (!mounted) return;
+                                  if (res['_status'] == 201 && res['scan'] != null) {
+                                    navigator.push(
+                                      MaterialPageRoute(
+                                        builder: (_) => ScanResultScreen(scan: res['scan'] as Map<String, dynamic>),
+                                      ),
+                                    );
+                                    _loadScans();
+                                  }
+                                } catch (_) {}
+                                if (mounted) setState(() => _loading = false);
+                              },
+                              icon: const Icon(Icons.play_circle_outline, size: 20),
+                              label: const Text('Ver demo con imagen de ejemplo'),
+                            ),
+                          ],
+                        ),
                       ),
                     )
                   : RefreshIndicator(
@@ -152,7 +214,9 @@ class _HomeScreenState extends State<HomeScreen> {
         onPressed: () async {
           final navigator = Navigator.of(context);
           final result = await navigator.push<Map<String, dynamic>>(
-            MaterialPageRoute(builder: (_) => const UploadScreen()),
+            MaterialPageRoute(
+              builder: (_) => const UploadScreen(openCameraFirst: true),
+            ),
           );
           if (!mounted) return;
           if (result != null) {
@@ -164,8 +228,8 @@ class _HomeScreenState extends State<HomeScreen> {
           }
           _loadScans();
         },
-        icon: const Icon(Icons.add_a_photo),
-        label: const Text('Analizar foto'),
+        icon: const Icon(Icons.camera_alt),
+        label: const Text('Escanear con cámara'),
       ),
     );
   }

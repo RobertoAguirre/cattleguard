@@ -128,6 +128,7 @@ const scanSchema = new mongoose.Schema({
         status: String,
         statusLabel: String,
         message: String,
+        diagnosticoGeneral: String,
         hasWounds: Boolean,
         woundsCount: Number,
         hasDiseases: Boolean,
