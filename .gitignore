@@ -3,6 +3,10 @@ node_modules/
 .DS_Store
 *.log
 dist/
+# Ignore build outputs, but keep Flutter web deploy bundle
 build/
+!frontend/build/
+!frontend/build/web/
+!frontend/build/web/**
 test-images/
 
