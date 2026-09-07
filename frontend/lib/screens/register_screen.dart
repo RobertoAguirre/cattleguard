@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_strings.dart';
 import '../services/api_service.dart';
+import '../widgets/language_toggle.dart';
 import 'login_screen.dart';
 import 'home_screen.dart';
 
@@ -19,6 +21,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String? _error;
 
   Future<void> _register() async {
+    final s = S.of(context);
     setState(() {
       _loading = true;
       _error = null;
@@ -40,7 +43,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         );
       } else {
         setState(() {
-          _error = res['message'] as String? ?? 'Error al registrarse';
+          _error = res['message'] as String? ?? s.registerError;
           _loading = false;
         });
       }
@@ -63,8 +66,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Crear cuenta')),
+      appBar: AppBar(
+        title: Text(s.registerTitle),
+        actions: const [LanguageToggle(compact: true)],
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -73,18 +80,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
             children: [
               TextField(
                 controller: _name,
-                decoration: const InputDecoration(
-                  labelText: 'Nombre',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: s.name,
+                  border: const OutlineInputBorder(),
                 ),
                 textInputAction: TextInputAction.next,
               ),
               const SizedBox(height: 16),
               TextField(
                 controller: _email,
-                decoration: const InputDecoration(
-                  labelText: 'Email',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: s.email,
+                  border: const OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
@@ -92,10 +99,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 16),
               TextField(
                 controller: _phone,
-                decoration: const InputDecoration(
-                  labelText: 'Teléfono',
-                  border: OutlineInputBorder(),
-                  hintText: '+52 612 345 6789',
+                decoration: InputDecoration(
+                  labelText: s.phone,
+                  border: const OutlineInputBorder(),
+                  hintText: '+1 555 123 4567',
                 ),
                 keyboardType: TextInputType.phone,
                 textInputAction: TextInputAction.next,
@@ -103,9 +110,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 16),
               TextField(
                 controller: _password,
-                decoration: const InputDecoration(
-                  labelText: 'Contraseña',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: s.password,
+                  border: const OutlineInputBorder(),
                 ),
                 obscureText: true,
                 textInputAction: TextInputAction.done,
@@ -127,7 +134,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         width: 20,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text('Registrarse'),
+                    : Text(s.register),
               ),
               TextButton(
                 onPressed: () {
@@ -135,7 +142,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     MaterialPageRoute(builder: (_) => const LoginScreen()),
                   );
                 },
-                child: const Text('Ya tengo cuenta'),
+                child: Text(s.haveAccount),
               ),
             ],
           ),

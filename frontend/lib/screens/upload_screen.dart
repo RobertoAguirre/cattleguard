@@ -2,16 +2,16 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
+import '../l10n/app_strings.dart';
 import '../services/api_service.dart';
+import '../widgets/language_toggle.dart';
 
-/// URL de imagen de ejemplo para el modo demo (ganado - uso demostrativo).
 const String kDemoImageUrl =
     'https://images.unsplash.com/photo-1546445317-29f4545e9d53?w=800';
 
 class UploadScreen extends StatefulWidget {
   const UploadScreen({super.key, this.openCameraFirst = false});
 
-  /// Si true, al abrir la pantalla se ofrece abrir la cámara de inmediato.
   final bool openCameraFirst;
 
   @override
@@ -35,7 +35,6 @@ class _UploadScreenState extends State<UploadScreen> {
     }
   }
 
-  /// Abre la cámara directamente (sin sheet) — ideal para móvil y "wow".
   Future<void> _openCameraDirect() async {
     try {
       final file = await _picker.pickImage(
@@ -58,6 +57,7 @@ class _UploadScreenState extends State<UploadScreen> {
   }
 
   Future<void> _pickImage(bool isThermal) async {
+    final s = S.of(context);
     try {
       final source = await showModalBottomSheet<ImageSource>(
         context: context,
@@ -67,12 +67,12 @@ class _UploadScreenState extends State<UploadScreen> {
             children: [
               ListTile(
                 leading: const Icon(Icons.photo_library),
-                title: const Text('Galería'),
+                title: Text(s.gallery),
                 onTap: () => Navigator.pop(context, ImageSource.gallery),
               ),
               ListTile(
                 leading: const Icon(Icons.camera_alt),
-                title: const Text('Cámara'),
+                title: Text(s.camera),
                 onTap: () => Navigator.pop(context, ImageSource.camera),
               ),
             ],
@@ -106,7 +106,11 @@ class _UploadScreenState extends State<UploadScreen> {
     });
     try {
       final response = await http.get(Uri.parse(kDemoImageUrl));
-      if (response.statusCode != 200) throw Exception('No se pudo cargar la imagen de demo');
+      if (response.statusCode != 200) {
+        throw Exception(ApiService.lang == 'en'
+            ? 'Could not load demo image'
+            : 'No se pudo cargar la imagen de demo');
+      }
       final rgbBytes = response.bodyBytes;
       final res = await ApiService.uploadScan(
         rgbBytes: rgbBytes,
@@ -118,7 +122,9 @@ class _UploadScreenState extends State<UploadScreen> {
         Navigator.of(context).pop(res['scan']);
       } else {
         setState(() {
-          _error = res['message'] as String? ?? res['error'] as String? ?? 'Error en demo';
+          _error = res['message'] as String? ??
+              res['error'] as String? ??
+              (ApiService.lang == 'en' ? 'Demo error' : 'Error en demo');
           _loading = false;
         });
       }
@@ -132,7 +138,9 @@ class _UploadScreenState extends State<UploadScreen> {
 
   Future<void> _upload() async {
     if (_rgbFile == null) {
-      setState(() => _error = 'Selecciona al menos la imagen RGB');
+      setState(() => _error = ApiService.lang == 'en'
+          ? 'Select at least the RGB image'
+          : 'Selecciona al menos la imagen RGB');
       return;
     }
     setState(() {
@@ -156,7 +164,9 @@ class _UploadScreenState extends State<UploadScreen> {
         Navigator.of(context).pop(res['scan']);
       } else {
         setState(() {
-          _error = res['message'] as String? ?? res['error'] as String? ?? 'Error al subir';
+          _error = res['message'] as String? ??
+              res['error'] as String? ??
+              (ApiService.lang == 'en' ? 'Upload error' : 'Error al subir');
           _loading = false;
         });
       }
@@ -170,19 +180,22 @@ class _UploadScreenState extends State<UploadScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Analizar foto')),
+      appBar: AppBar(
+        title: Text(s.analyzePhoto),
+        actions: const [LanguageToggle(compact: true)],
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // CTA principal: cámara (uso desde celular / wow)
               FilledButton.icon(
                 onPressed: _loading ? null : _openCameraDirect,
                 icon: const Icon(Icons.camera_alt, size: 28),
-                label: const Text('Tomar foto con cámara'),
+                label: Text(s.takePhoto),
                 style: FilledButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 20),
                   textStyle: const TextStyle(fontSize: 18),
@@ -192,19 +205,19 @@ class _UploadScreenState extends State<UploadScreen> {
               OutlinedButton.icon(
                 onPressed: _loading ? null : () => _pickImage(false),
                 icon: const Icon(Icons.photo_library),
-                label: const Text('Subir desde galería'),
+                label: Text(s.uploadGallery),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
               ),
               const SizedBox(height: 24),
-              Text(
-                'Sube una foto del ganado (RGB). Opcional: imagen térmica.',
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
+              Text(s.uploadHint, style: Theme.of(context).textTheme.bodyLarge),
               const SizedBox(height: 12),
               Card(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                color: Theme.of(context)
+                    .colorScheme
+                    .surfaceContainerHighest
+                    .withValues(alpha: 0.5),
                 child: Padding(
                   padding: const EdgeInsets.all(12),
                   child: Column(
@@ -212,47 +225,51 @@ class _UploadScreenState extends State<UploadScreen> {
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.lightbulb_outline, size: 18, color: Theme.of(context).colorScheme.primary),
+                          Icon(Icons.lightbulb_outline,
+                              size: 18,
+                              color: Theme.of(context).colorScheme.primary),
                           const SizedBox(width: 6),
                           Text(
-                            'Mejor detección',
-                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
+                            s.betterDetection,
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleSmall
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 6),
-                      Text(
-                        '• Una vaca por foto (máx. 2–3 si están cerca).\n'
-                        '• Preferir vista de lado (perfil).\n'
-                        '• Acercar para que el animal o la zona a revisar ocupe bien el encuadre.',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
+                      Text(s.tipsBody,
+                          style: Theme.of(context).textTheme.bodySmall),
                     ],
                   ),
                 ),
               ),
               const SizedBox(height: 24),
               _buildImageCard(
-                title: 'Imagen RGB (requerida)',
+                title: s.rgbRequired,
                 file: _rgbFile,
                 previewBytes: _rgbPreviewBytes,
                 onTap: () => _pickImage(false),
+                tapLabel: s.tapToSelect,
               ),
               const SizedBox(height: 16),
               _buildImageCard(
-                title: 'Imagen térmica (opcional)',
+                title: s.thermalOptional,
                 file: _thermalFile,
                 previewBytes: _thermalPreviewBytes,
                 onTap: () => _pickImage(true),
+                tapLabel: s.tapToSelect,
               ),
               if (_error != null) ...[
                 const SizedBox(height: 16),
                 Text(
                   _error!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                  style:
+                      TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
               ],
               const SizedBox(height: 24),
@@ -265,23 +282,23 @@ class _UploadScreenState extends State<UploadScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.cloud_upload),
-                label: Text(_loading ? 'Analizando…' : 'Analizar esta foto'),
+                label: Text(_loading ? s.analyzing : s.analyzeThis),
               ),
               const SizedBox(height: 24),
               const Divider(),
               const SizedBox(height: 8),
               Text(
-                '¿Primera vez? Prueba el flujo completo con una imagen de ejemplo.',
+                s.firstTimeDemo,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.grey[700],
-                ),
+                      color: Colors.grey[700],
+                    ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
               OutlinedButton.icon(
                 onPressed: _loading ? null : _runDemo,
                 icon: const Icon(Icons.play_circle_outline),
-                label: const Text('Ver demo'),
+                label: Text(s.viewDemoShort),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Theme.of(context).colorScheme.primary,
                 ),
@@ -298,6 +315,7 @@ class _UploadScreenState extends State<UploadScreen> {
     required XFile? file,
     required List<int>? previewBytes,
     required VoidCallback onTap,
+    required String tapLabel,
   }) {
     Widget preview = Container(
       width: 80,
@@ -330,10 +348,11 @@ class _UploadScreenState extends State<UploadScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+                    Text(title,
+                        style: const TextStyle(fontWeight: FontWeight.w600)),
                     const SizedBox(height: 4),
                     Text(
-                      file != null ? file.name : 'Toca para seleccionar',
+                      file != null ? file.name : tapLabel,
                       style: TextStyle(color: Colors.grey[600], fontSize: 12),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,

@@ -7,13 +7,21 @@ class ApiService {
   static String get baseUrl => '$apiBaseUrl$apiPrefix';
 
   static String? _token;
+  static String _lang = 'en';
 
   static void setToken(String? token) {
     _token = token;
   }
 
+  static void setLang(String lang) {
+    _lang = (lang == 'es') ? 'es' : 'en';
+  }
+
+  static String get lang => _lang;
+
   static Map<String, String> get _headers => {
         'Accept': 'application/json',
+        'Accept-Language': _lang,
         'Content-Type': 'application/json',
         if (_token != null) 'Authorization': 'Bearer $_token',
       };
@@ -73,6 +81,8 @@ class ApiService {
     final request = http.MultipartRequest('POST', uri);
     request.headers['Authorization'] = 'Bearer $_token';
     request.headers['Accept'] = 'application/json';
+    request.headers['Accept-Language'] = _lang;
+    request.fields['lang'] = _lang;
 
     final imageJpeg = MediaType('image', 'jpeg');
     request.files.add(http.MultipartFile.fromBytes(

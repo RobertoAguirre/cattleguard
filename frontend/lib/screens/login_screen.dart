@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_strings.dart';
 import '../services/api_service.dart';
+import '../widgets/language_toggle.dart';
 import 'register_screen.dart';
 import 'home_screen.dart';
 
@@ -17,6 +19,7 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _error;
 
   Future<void> _login() async {
+    final s = S.of(context);
     setState(() {
       _loading = true;
       _error = null;
@@ -35,7 +38,7 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       } else {
         setState(() {
-          _error = res['message'] as String? ?? 'Error al iniciar sesión';
+          _error = res['message'] as String? ?? s.loginError;
           _loading = false;
         });
       }
@@ -56,14 +59,18 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     return Scaffold(
+      appBar: AppBar(
+        actions: const [LanguageToggle(compact: true)],
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 48),
+              const SizedBox(height: 24),
               Text(
                 'CattleGuard',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
@@ -73,17 +80,17 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Detección de enfermedades en ganado',
+                s.loginSubtitle,
                 style: Theme.of(context).textTheme.bodyMedium,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 48),
               TextField(
                 controller: _email,
-                decoration: const InputDecoration(
-                  labelText: 'Email',
-                  border: OutlineInputBorder(),
-                  hintText: 'ejemplo@correo.com',
+                decoration: InputDecoration(
+                  labelText: s.email,
+                  border: const OutlineInputBorder(),
+                  hintText: s.emailHint,
                 ),
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
@@ -91,9 +98,9 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 16),
               TextField(
                 controller: _password,
-                decoration: const InputDecoration(
-                  labelText: 'Contraseña',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: s.password,
+                  border: const OutlineInputBorder(),
                 ),
                 obscureText: true,
                 textInputAction: TextInputAction.done,
@@ -115,7 +122,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         width: 20,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text('Iniciar sesión'),
+                    : Text(s.signIn),
               ),
               const SizedBox(height: 16),
               TextButton(
@@ -124,7 +131,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     MaterialPageRoute(builder: (_) => const RegisterScreen()),
                   );
                 },
-                child: const Text('Crear cuenta'),
+                child: Text(s.createAccount),
               ),
             ],
           ),

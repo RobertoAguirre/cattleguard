@@ -6,6 +6,14 @@ import { optionalAuth } from '../middleware/auth.js';
 import { uploadImage } from '../utils/cloudinary.js';
 import { analyzeWithBothModels } from '../utils/roboflow.js';
 import { sendAlert } from '../utils/whatsapp.js';
+import { pickLang } from '../utils/diagnosis_i18n.js';
+
+function resolveLang(req) {
+  const fromBody = req.body?.lang;
+  const fromHeader = req.headers['accept-language'];
+  const raw = (fromBody || fromHeader || 'en').toString().toLowerCase();
+  return pickLang(raw.startsWith('es') ? 'es' : 'en');
+}
 
 /**
  * Función helper para actualizar diagnóstico consolidado del animal
@@ -143,6 +151,17 @@ router.post('/', optionalAuth, upload.fields([
 
     const [rgbUrl, thermalUrl] = await Promise.all(uploadPromises);
 
+    const lang = resolveLang(req);
+    const fallbackCopy = lang === 'en'
+      ? {
+          statusLabel: 'Healthy',
+          message: 'No diseases or wounds detected.',
+        }
+      : {
+          statusLabel: 'Sano',
+          message: 'No se detectaron enfermedades ni heridas.',
+        };
+
     // Analizar imagen RGB con los tres modelos de Roboflow (enfermedades + heridas)
     let aiResults = {
       model1: {
@@ -169,8 +188,8 @@ router.post('/', optionalAuth, upload.fields([
         woundsCount: 0,
         summary: {
           status: 'healthy',
-          statusLabel: 'Sano',
-          message: 'No se detectaron enfermedades ni heridas.',
+          statusLabel: fallbackCopy.statusLabel,
+          message: fallbackCopy.message,
           hasWounds: false,
           woundsCount: 0,
           hasDiseases: false,
@@ -185,7 +204,7 @@ router.post('/', optionalAuth, upload.fields([
 
     try {
       // Analizar con ambos modelos (cattle-diseases y cow-diseases)
-      const analysis = await analyzeWithBothModels(rgbUrl);
+      const analysis = await analyzeWithBothModels(rgbUrl, { lang });
       aiResults = analysis;
     } catch (error) {
       console.error('Error en análisis de IA:', error.message);
@@ -297,7 +316,7 @@ router.post('/', optionalAuth, upload.fields([
 const BATCH_MAX_IMAGES = 20;
 
 /** Objeto por defecto para aiResults cuando falla el análisis */
-const defaultAiResults = () => ({
+const defaultAiResults = (lang = 'en') => ({
   model1: { detections: [], confidence: 0, classes: [] },
   model2: { detections: [], confidence: 0, classes: [] },
   wound: { detections: [], confidence: 0, classes: [] },
@@ -310,8 +329,10 @@ const defaultAiResults = () => ({
     woundsCount: 0,
     summary: {
       status: 'healthy',
-      statusLabel: 'Sano',
-      message: 'No se detectaron enfermedades ni heridas.',
+      statusLabel: lang === 'en' ? 'Healthy' : 'Sano',
+      message: lang === 'en'
+        ? 'No diseases or wounds detected.'
+        : 'No se detectaron enfermedades ni heridas.',
       hasWounds: false,
       woundsCount: 0,
       hasDiseases: false,
@@ -360,15 +381,17 @@ router.post('/batch', optionalAuth, upload.fields([
       }
     }
 
+    const batchLang = resolveLang(req);
+
     const processOne = async (rgbFile, thermalFileOrNull, index) => {
       const thermalBuffer = thermalFileOrNull ? thermalFileOrNull.buffer : rgbFile.buffer;
       const [rgbUrl, thermalUrl] = await Promise.all([
         uploadImage(rgbFile.buffer, 'scans/rgb'),
         uploadImage(thermalBuffer, 'scans/thermal')
       ]);
-      let aiResults = defaultAiResults();
+      let aiResults = defaultAiResults(batchLang);
       try {
-        const analysis = await analyzeWithBothModels(rgbUrl);
+        const analysis = await analyzeWithBothModels(rgbUrl, { lang: batchLang });
         aiResults = analysis;
       } catch (err) {
         console.error(`Error análisis batch imagen ${index + 1}:`, err.message);

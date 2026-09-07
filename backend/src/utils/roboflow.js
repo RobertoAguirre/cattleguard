@@ -1,4 +1,10 @@
 import axios from 'axios';
+import {
+  getDiagnosisInfo,
+  buildDiagnosticoGeneral,
+  buildSummaryCopy,
+  pickLang
+} from './diagnosis_i18n.js';
 
 const ROBOFLOW_API_KEY = process.env.ROBOFLOW_API_KEY;
 
@@ -21,140 +27,6 @@ const MODEL2_URL = `https://detect.roboflow.com/${MODEL2_PROJECT}/${MODEL2_VERSI
 const WOUND_PROJECT = process.env.ROBOFLOW_WOUND_PROJECT || 'wound-object-detection';
 const WOUND_VERSION = process.env.ROBOFLOW_WOUND_VERSION || '1';
 const WOUND_URL = `https://detect.roboflow.com/${WOUND_PROJECT}/${WOUND_VERSION}`;
-
-/** Diagnósticos y síntomas para mostrar al usuario (nombre técnico → etiqueta + síntomas) */
-const DIAGNOSIS_INFO = {
-  // Enfermedades (cattle-diseases / cow-diseases)
-  lumpy: {
-    label: 'Dermatosis nodular contagiosa (Lumpy)',
-    symptoms: 'Nódulos en piel, fiebre, descarga nasal y ocular, pérdida de apetito, cojera. Afecta piel, nódulos linfáticos y puede causar mastitis.',
-    recommendation: 'Aislamiento y revisión veterinaria. Enfermedad de declaración obligatoria en muchas regiones.'
-  },
-  skin: {
-    label: 'Alteración cutánea',
-    symptoms: 'Lesiones en piel, enrojecimiento, descamación o engrosamiento. Puede asociarse a parásitos, hongos, dermatitis o reacción alérgica.',
-    recommendation: 'Revisar zona afectada y estado general. Valorar tratamiento antiparasitario o antifúngico.'
-  },
-  dermatitis: {
-    label: 'Dermatitis',
-    symptoms: 'Inflamación de la piel, enrojecimiento, picor, costras o pérdida de pelo en la zona afectada.',
-    recommendation: 'Identificar causa (contacto, parásitos, humedad). Tratamiento según origen.'
-  },
-  disease: {
-    label: 'Signos de enfermedad',
-    symptoms: 'Indicios inespecíficos de malestar: aspecto general alterado, posible decaimiento o alteración del pelaje.',
-    recommendation: 'Observación y revisión veterinaria para concretar diagnóstico.'
-  },
-  contagious: {
-    label: 'Indicio de proceso contagioso',
-    symptoms: 'Patrón compatible con enfermedad transmisible entre animales (lesiones, estado general).',
-    recommendation: 'Aislamiento preventivo y diagnóstico veterinario.'
-  },
-  ecthym: {
-    label: 'Ectima contagioso',
-    symptoms: 'Lesiones costrosas en boca, morro y patas. Enfermedad viral que afecta ovejas y puede afectar al ganado.',
-    recommendation: 'Revisión veterinaria. Evitar contacto con otros animales hasta diagnóstico.'
-  },
-  respiratory: {
-    label: 'Afección respiratoria',
-    symptoms: 'Tos, descarga nasal, dificultad respiratoria o respiración acelerada. Puede asociarse a BRD u otras infecciones.',
-    recommendation: 'Revisión veterinaria. Valorar antibiótico o antiinflamatorio según criterio profesional.'
-  },
-  brd: {
-    label: 'Complejo respiratorio bovino (BRD)',
-    symptoms: 'Fiebre, tos, descarga nasal, respiración rápida, orejas caídas, pérdida de apetito y de peso.',
-    recommendation: 'Tratamiento temprano con antibiótico y antiinflamatorio. Aislamiento y buen manejo.'
-  },
-  '(brd)': {
-    label: 'Complejo respiratorio bovino (BRD)',
-    symptoms: 'Fiebre, tos, descarga nasal, respiración rápida, orejas caídas, pérdida de apetito y de peso.',
-    recommendation: 'Tratamiento temprano con antibiótico y antiinflamatorio. Aislamiento y buen manejo.'
-  },
-  bovine: {
-    label: 'Hallazgo en bovino',
-    symptoms: 'Detección de alteración en el animal; se requieren más datos para precisar el tipo de problema.',
-    recommendation: 'Completar evaluación con inspección directa o más imágenes.'
-  },
-  unlabeled: {
-    label: 'Hallazgo sin clasificar',
-    symptoms: 'El modelo detectó una anomalía que no pudo asignar a una categoría concreta.',
-    recommendation: 'Revisión visual o veterinaria para identificar la causa.'
-  },
-  // Heridas
-  'pressure-wound': {
-    label: 'Herida por presión',
-    symptoms: 'Lesión por apoyo prolongado o rozadura: piel dañada, posible ulceración, riesgo de infección. Común en animales postrados.',
-    recommendation: 'Cambios de postura, camas blandas, limpieza y desinfección de la herida.'
-  },
-  'wound-ulser': {
-    label: 'Úlcera',
-    symptoms: 'Pérdida de tejido en piel o mucosas, zona enrojecida o con exudado. Puede infectarse si no se trata.',
-    recommendation: 'Limpieza, desinfección y protección de la zona. Revisión veterinaria si es profunda.'
-  },
-  'orthopaedic-wounds': {
-    label: 'Lesión ortopédica / zona afectada',
-    symptoms: 'Zona de posible traumatismo, inflamación o herida asociada a patas o soporte. Puede haber cojera o dolor.',
-    recommendation: 'Reposo, antiinflamatorio y revisión para descartar fractura o infección.'
-  },
-  wound: {
-    label: 'Herida',
-    symptoms: 'Corte, rasguño o abertura en la piel con riesgo de sangrado e infección.',
-    recommendation: 'Limpieza, desinfección y vigilancia de signos de infección.'
-  },
-  cut: {
-    label: 'Corte',
-    symptoms: 'Herida por objeto cortante: bordes definidos, posible sangrado. Riesgo de infección.',
-    recommendation: 'Limpieza, hemostasia si sangra y desinfección. Sutura si es necesario.'
-  },
-  burn: {
-    label: 'Quemadura',
-    symptoms: 'Daño por calor o sustancia: piel enrojecida, ampollas o necrosis. Dolor y riesgo de infección.',
-    recommendation: 'Enfriar la zona, no reventar ampollas. Tratamiento veterinario según extensión.'
-  },
-  scratch: {
-    label: 'Rasguño',
-    symptoms: 'Lesión superficial en la piel, enrojecimiento o pequeña pérdida de continuidad.',
-    recommendation: 'Limpieza suave y desinfección para evitar infección.'
-  }
-};
-
-function getDiagnosisInfo(classKey) {
-  const key = (classKey || '').toLowerCase().trim();
-  return DIAGNOSIS_INFO[key] || {
-    label: classKey || 'Hallazgo',
-    symptoms: 'Signo detectado por el modelo. Se recomienda revisión visual o veterinaria para concretar.',
-    recommendation: 'Valorar con un profesional.'
-  };
-}
-
-/**
- * Genera un diagnóstico general en texto a partir de los hallazgos (sin LLM).
- */
-function buildDiagnosticoGeneral({ classification, combinedConfidence, diagnoses, wounds, sortedDiseases, isHealthy }) {
-  const precision = Math.round(combinedConfidence * 100);
-  const woundLabels = wounds.slice(0, 3).map(w => getDiagnosisInfo(w.class).label);
-  const diseaseLabels = sortedDiseases.slice(0, 3).map(d => getDiagnosisInfo(d.name).label);
-
-  if (isHealthy && wounds.length === 0) {
-    return `No se detectaron signos de enfermedad ni heridas en el análisis (precisión ${precision}%). El animal presenta un estado aparente dentro de lo normal. Se recomienda mantener la observación y las buenas prácticas de manejo.`;
-  }
-
-  const parts = [];
-  if (wounds.length > 0) {
-    parts.push(`Se detectaron ${wounds.length} herida(s): ${woundLabels.join(', ')}.`);
-  }
-  if (sortedDiseases.length > 0) {
-    parts.push(`Signos compatibles con: ${diseaseLabels.join(', ')}.`);
-  }
-  const hallazgos = parts.join(' ');
-  const recomendacion = classification === 'critical'
-    ? 'Se recomienda revisión veterinaria con prioridad.'
-    : classification === 'suspicious'
-      ? 'Se recomienda revisión veterinaria o inspección directa para confirmar.'
-      : 'Mantener observación.';
-
-  return `Diagnóstico de apoyo (precisión ${precision}%): ${hallazgos} ${recomendacion} Este resultado es orientativo y no sustituye el criterio de un profesional.`;
-}
 
 /**
  * Analiza una imagen con un modelo específico de Roboflow
@@ -281,9 +153,11 @@ export async function analyzeWithWoundModel(imageUrl) {
 /**
  * Analiza una imagen con los tres modelos (enfermedades + heridas) y combina resultados
  * @param {string} imageUrl - URL de la imagen a analizar
+ * @param {{ lang?: string }} [options]
  * @returns {Promise<{model1: Object, model2: Object, wound: Object, combined: Object}>}
  */
-export async function analyzeWithBothModels(imageUrl) {
+export async function analyzeWithBothModels(imageUrl, options = {}) {
+  const lang = pickLang(options.lang);
   try {
     // Analizar con los tres modelos en paralelo
     const [result1, result2, resultWound] = await Promise.allSettled([
@@ -398,34 +272,26 @@ export async function analyzeWithBothModels(imageUrl) {
     // Resumen de indicadores para frontend (sin quitar detalle existente)
     const hasWounds = wounds.length > 0;
     const hasDiseases = sortedDiseases.length > 0;
-    const statusLabels = { healthy: 'Sano', suspicious: 'Sospechoso', critical: 'Crítico' };
-    const statusLabel = statusLabels[classification] || classification;
+    const { statusLabel, message, healthyDiagnosis } = buildSummaryCopy({
+      classification,
+      isHealthy,
+      hasWounds,
+      hasDiseases,
+      wounds,
+      sortedDiseases,
+      lang
+    });
 
     // Consenso entre modelos de enfermedades (mejora credibilidad / precisión percibida)
     const model1HasFindings = (model1Result.classes || []).some(c => !healthyClasses.includes(c));
     const model2HasFindings = (model2Result.classes || []).some(c => !healthyClasses.includes(c));
     const modelsAgree = model1HasFindings === model2HasFindings;
 
-    let message = '';
-    if (isHealthy && !hasWounds) {
-      message = 'No se detectaron enfermedades ni heridas.';
-    } else if (hasWounds && !hasDiseases) {
-      message = wounds.length === 1
-        ? `Se detectó 1 herida (${(wounds[0].confidence * 100).toFixed(0)}% confianza).`
-        : `Se detectaron ${wounds.length} heridas. Revisión recomendada.`;
-    } else if (hasDiseases && !hasWounds) {
-      message = sortedDiseases.length === 1
-        ? `Posible signo de: ${sortedDiseases[0].name} (${(sortedDiseases[0].confidence * 100).toFixed(0)}%).`
-        : `Posibles signos de enfermedad (${sortedDiseases.length} hallazgos). Revisión recomendada.`;
-    } else {
-      message = `Se detectaron ${wounds.length} herida(s) y ${sortedDiseases.length} posible(s) signo(s) de enfermedad. Revisión recomendada.`;
-    }
-
     const indicators = [];
     const diagnoses = [];
 
     wounds.forEach(w => {
-      const info = getDiagnosisInfo(w.class);
+      const info = getDiagnosisInfo(w.class, lang);
       const precisionPercent = Math.round(w.confidence * 100);
       indicators.push({
         type: 'wound',
@@ -447,7 +313,7 @@ export async function analyzeWithBothModels(imageUrl) {
     });
 
     sortedDiseases.forEach(d => {
-      const info = getDiagnosisInfo(d.name);
+      const info = getDiagnosisInfo(d.name, lang);
       const precisionPercent = Math.round(d.confidence * 100);
       indicators.push({
         type: 'disease',
@@ -473,7 +339,7 @@ export async function analyzeWithBothModels(imageUrl) {
       indicators.push({
         type: 'healthy',
         id: 'healthy',
-        label: 'Sin hallazgos',
+        label: healthyDiagnosis.noFindingsLabel,
         value: precisionPercent.toString() + '%',
         severity: 'healthy',
         rawConfidence: combinedConfidence
@@ -481,10 +347,10 @@ export async function analyzeWithBothModels(imageUrl) {
       diagnoses.push({
         type: 'healthy',
         id: 'healthy',
-        diagnosisLabel: 'Animal sin signos detectados',
+        diagnosisLabel: healthyDiagnosis.diagnosisLabel,
         precisionPercent,
-        symptoms: 'No se detectaron lesiones ni signos de enfermedad en el análisis.',
-        recommendation: 'Mantener observación y buenas prácticas de manejo.',
+        symptoms: healthyDiagnosis.symptoms,
+        recommendation: healthyDiagnosis.recommendation,
         severity: 'healthy'
       });
     }
@@ -492,10 +358,10 @@ export async function analyzeWithBothModels(imageUrl) {
     const diagnosticoGeneral = buildDiagnosticoGeneral({
       classification,
       combinedConfidence,
-      diagnoses,
       wounds,
       sortedDiseases,
-      isHealthy
+      isHealthy,
+      lang
     });
 
     const summary = {

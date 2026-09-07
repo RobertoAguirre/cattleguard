@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_strings.dart';
+import '../widgets/language_toggle.dart';
 
 class ScanResultScreen extends StatelessWidget {
   final Map<String, dynamic> scan;
@@ -7,6 +9,7 @@ class ScanResultScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final combined = scan['aiResults']?['combined'] as Map<String, dynamic>?;
     final summary = combined?['summary'] as Map<String, dynamic>?;
     final status = summary?['status'] ?? 'healthy';
@@ -29,7 +32,10 @@ class ScanResultScreen extends StatelessWidget {
     final imgH = (imageDimensions?['height'] as num?)?.toDouble() ?? 640.0;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Resultado del análisis')),
+      appBar: AppBar(
+        title: Text(s.resultTitle),
+        actions: const [LanguageToggle(compact: true)],
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -46,11 +52,11 @@ class ScanResultScreen extends StatelessWidget {
                     wounds: wounds,
                     imageWidth: imgW,
                     imageHeight: imgH,
+                    labelFor: s.woundLabel,
                   ),
                 ),
               ),
             const SizedBox(height: 20),
-            // Veredicto principal (impacto visual para pitch/demo)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
@@ -69,9 +75,9 @@ class ScanResultScreen extends StatelessWidget {
                       Text(
                         statusLabel,
                         style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          color: statusColor,
-                          fontWeight: FontWeight.bold,
-                        ),
+                              color: statusColor,
+                              fontWeight: FontWeight.bold,
+                            ),
                       ),
                     ],
                   ),
@@ -83,7 +89,7 @@ class ScanResultScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Confianza: $confidencePercent',
+                    '${s.confidence}: $confidencePercent',
                     style: TextStyle(color: Colors.grey[700], fontSize: 13),
                   ),
                   if (modelsAgree) ...[
@@ -94,7 +100,7 @@ class ScanResultScreen extends StatelessWidget {
                         Icon(Icons.check_circle_outline, size: 18, color: Colors.green[700]),
                         const SizedBox(width: 6),
                         Text(
-                          'Los dos modelos coinciden',
+                          s.modelsAgree,
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
@@ -110,10 +116,10 @@ class ScanResultScreen extends StatelessWidget {
             if (diagnosticoGeneral != null && diagnosticoGeneral.isNotEmpty) ...[
               const SizedBox(height: 16),
               Text(
-                'Diagnóstico general',
+                s.generalDiagnosis,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                      fontWeight: FontWeight.bold,
+                    ),
               ),
               const SizedBox(height: 8),
               Card(
@@ -133,14 +139,14 @@ class ScanResultScreen extends StatelessWidget {
                   if (woundsCount > 0)
                     Chip(
                       avatar: const Icon(Icons.warning_amber, color: Colors.white, size: 18),
-                      label: Text('$woundsCount herida(s)'),
+                      label: Text(s.woundsCount(woundsCount is int ? woundsCount : int.tryParse('$woundsCount') ?? 0)),
                       backgroundColor: Colors.red.shade100,
                     ),
                   const SizedBox(width: 8),
                   if (diseasesCount > 0)
                     Chip(
                       avatar: const Icon(Icons.medical_services, color: Colors.white, size: 18),
-                      label: Text('$diseasesCount hallazgo(s)'),
+                      label: Text(s.findingsCount(diseasesCount is int ? diseasesCount : int.tryParse('$diseasesCount') ?? 0)),
                       backgroundColor: Colors.orange.shade100,
                     ),
                 ],
@@ -149,10 +155,10 @@ class ScanResultScreen extends StatelessWidget {
             if (diagnoses.isNotEmpty) ...[
               const SizedBox(height: 24),
               Text(
-                'Diagnósticos con precisión',
+                s.diagnosesPrecision,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                      fontWeight: FontWeight.bold,
+                    ),
               ),
               const SizedBox(height: 12),
               ...diagnoses.map<Widget>((e) {
@@ -187,7 +193,7 @@ class ScanResultScreen extends StatelessWidget {
                                 ),
                               ),
                               Text(
-                                'Precisión: $precisionPercent%',
+                                s.precision(precisionPercent),
                                 style: TextStyle(
                                   fontWeight: FontWeight.w600,
                                   color: color,
@@ -237,7 +243,7 @@ class ScanResultScreen extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Text(
-                                'Precisión: $precisionPercent%',
+                                s.precision(precisionPercent),
                                 style: TextStyle(
                                   fontWeight: FontWeight.w600,
                                   color: color,
@@ -250,7 +256,7 @@ class ScanResultScreen extends StatelessWidget {
                         if (symptoms.isNotEmpty) ...[
                           const SizedBox(height: 10),
                           Text(
-                            'Síntomas / signos:',
+                            s.symptoms,
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
                               fontSize: 12,
@@ -266,7 +272,7 @@ class ScanResultScreen extends StatelessWidget {
                         if (recommendation.isNotEmpty) ...[
                           const SizedBox(height: 10),
                           Text(
-                            'Recomendación:',
+                            s.recommendation,
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
                               fontSize: 12,
@@ -276,7 +282,12 @@ class ScanResultScreen extends StatelessWidget {
                           const SizedBox(height: 4),
                           Text(
                             recommendation,
-                            style: TextStyle(fontSize: 13, height: 1.4, color: Colors.grey[800], fontStyle: FontStyle.italic),
+                            style: TextStyle(
+                              fontSize: 13,
+                              height: 1.4,
+                              color: Colors.grey[800],
+                              fontStyle: FontStyle.italic,
+                            ),
                           ),
                         ],
                       ],
@@ -287,10 +298,7 @@ class ScanResultScreen extends StatelessWidget {
             ],
             if (indicators.isNotEmpty && diagnoses.isEmpty) ...[
               const SizedBox(height: 20),
-              Text(
-                'Indicadores',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
+              Text(s.indicators, style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
@@ -313,7 +321,7 @@ class ScanResultScreen extends StatelessWidget {
             OutlinedButton.icon(
               onPressed: () => Navigator.of(context).pop(),
               icon: const Icon(Icons.arrow_back),
-              label: const Text('Volver'),
+              label: Text(s.back),
             ),
             const SizedBox(height: 24),
             Container(
@@ -329,7 +337,7 @@ class ScanResultScreen extends StatelessWidget {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Resultado asistido por IA. No sustituye el criterio de un veterinario. Consulte a un profesional para el diagnóstico definitivo.',
+                      s.disclaimer,
                       style: TextStyle(fontSize: 12, color: Colors.grey[800], height: 1.4),
                     ),
                   ),
@@ -384,18 +392,19 @@ class ScanResultScreen extends StatelessWidget {
   }
 }
 
-/// Imagen con overlays que marcan heridas detectadas (bounding boxes).
 class _ImageWithOverlays extends StatelessWidget {
   final String imageUrl;
   final List<dynamic> wounds;
   final double imageWidth;
   final double imageHeight;
+  final String Function(String key) labelFor;
 
   const _ImageWithOverlays({
     required this.imageUrl,
     required this.wounds,
     required this.imageWidth,
     required this.imageHeight,
+    required this.labelFor,
   });
 
   @override
@@ -417,7 +426,8 @@ class _ImageWithOverlays extends StatelessWidget {
               child: Image.network(
                 imageUrl,
                 fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.broken_image, size: 48)),
+                errorBuilder: (_, __, ___) =>
+                    const Center(child: Icon(Icons.broken_image, size: 48)),
               ),
             ),
             if (wounds.isNotEmpty)
@@ -429,8 +439,7 @@ class _ImageWithOverlays extends StatelessWidget {
                 final heightPx = (map['height'] as num?)?.toDouble() ?? 0.0;
                 final confidence = (map['confidence'] as num?)?.toDouble() ?? 0.0;
                 final classKey = map['class'] as String? ?? 'wound';
-                final label = _woundLabel(classKey);
-                // Roboflow suele devolver centro (x,y) y tamaño (width, height)
+                final label = labelFor(classKey);
                 final left = x - widthPx / 2;
                 final top = y - heightPx / 2;
                 final leftD = offsetX + left * scale;
@@ -475,18 +484,5 @@ class _ImageWithOverlays extends StatelessWidget {
         );
       },
     );
-  }
-
-  static String _woundLabel(String key) {
-    const labels = {
-      'pressure-wound': 'Herida por presión',
-      'wound-ulser': 'Úlcera',
-      'orthopaedic-wounds': 'Lesión ortopédica',
-      'wound': 'Herida',
-      'cut': 'Corte',
-      'burn': 'Quemadura',
-      'scratch': 'Rasguño',
-    };
-    return labels[key] ?? key;
   }
 }

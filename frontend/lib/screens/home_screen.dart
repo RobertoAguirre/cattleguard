@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../l10n/app_strings.dart';
 import '../services/api_service.dart';
+import '../widgets/language_toggle.dart';
 import 'login_screen.dart';
 import 'upload_screen.dart';
 import 'scan_result_screen.dart';
@@ -38,7 +40,10 @@ class _HomeScreenState extends State<HomeScreen> {
         });
       } else {
         setState(() {
-          _error = res['message'] as String? ?? 'Error al cargar escaneos';
+          _error = res['message'] as String? ??
+              (ApiService.lang == 'en'
+                  ? 'Could not load scans'
+                  : 'Error al cargar escaneos');
           _loading = false;
         });
       }
@@ -59,12 +64,32 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Future<void> _openUpload({bool cameraFirst = true}) async {
+    final navigator = Navigator.of(context);
+    final result = await navigator.push<Map<String, dynamic>>(
+      MaterialPageRoute(
+        builder: (_) => UploadScreen(openCameraFirst: cameraFirst),
+      ),
+    );
+    if (!mounted) return;
+    if (result != null) {
+      navigator.push(
+        MaterialPageRoute(
+          builder: (_) => ScanResultScreen(scan: result),
+        ),
+      );
+    }
+    _loadScans();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     return Scaffold(
       appBar: AppBar(
         title: const Text('CattleGuard'),
         actions: [
+          const LanguageToggle(compact: true),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loading ? null : _loadScans,
@@ -86,7 +111,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SizedBox(height: 16),
                       FilledButton(
                         onPressed: _loadScans,
-                        child: const Text('Reintentar'),
+                        child: Text(s.retry),
                       ),
                     ],
                   ),
@@ -99,44 +124,34 @@ class _HomeScreenState extends State<HomeScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.camera_alt_outlined,
-                                size: 72, color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.8)),
+                                size: 72,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .primary
+                                    .withValues(alpha: 0.8)),
                             const SizedBox(height: 24),
                             Text(
-                              'Escanea ganado con la cámara',
-                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
+                              s.homeScanTitle,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleLarge
+                                  ?.copyWith(fontWeight: FontWeight.bold),
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Toma una foto o sube una imagen para detectar signos de enfermedad.',
+                              s.homeScanSub,
                               style: TextStyle(color: Colors.grey[600]),
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 24),
                             FilledButton.icon(
-                              onPressed: () async {
-                                final navigator = Navigator.of(context);
-                                final result = await navigator.push<Map<String, dynamic>>(
-                                  MaterialPageRoute(
-                                    builder: (_) => const UploadScreen(openCameraFirst: true),
-                                  ),
-                                );
-                                if (!mounted) return;
-                                if (result != null) {
-                                  navigator.push(
-                                    MaterialPageRoute(
-                                      builder: (_) => ScanResultScreen(scan: result),
-                                    ),
-                                  );
-                                }
-                                _loadScans();
-                              },
+                              onPressed: () => _openUpload(cameraFirst: true),
                               icon: const Icon(Icons.camera_alt),
-                              label: const Text('Abrir cámara'),
+                              label: Text(s.openCamera),
                               style: FilledButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 24, vertical: 16),
                               ),
                             ),
                             const SizedBox(height: 12),
@@ -147,26 +162,34 @@ class _HomeScreenState extends State<HomeScreen> {
                                 try {
                                   final bytes = (await http.get(Uri.parse(
                                     'https://images.unsplash.com/photo-1546445317-29f4545e9d53?w=800',
-                                  ))).bodyBytes;
+                                  )))
+                                      .bodyBytes;
                                   final res = await ApiService.uploadScan(
                                     rgbBytes: bytes,
                                     thermalBytes: bytes,
                                     source: 'demo',
                                   );
                                   if (!mounted) return;
-                                  if (res['_status'] == 201 && res['scan'] != null) {
+                                  if (res['_status'] == 201 &&
+                                      res['scan'] != null) {
                                     navigator.push(
                                       MaterialPageRoute(
-                                        builder: (_) => ScanResultScreen(scan: res['scan'] as Map<String, dynamic>),
+                                        builder: (_) => ScanResultScreen(
+                                          scan: res['scan']
+                                              as Map<String, dynamic>,
+                                        ),
                                       ),
                                     );
                                     _loadScans();
                                   }
                                 } catch (_) {}
-                                if (mounted) setState(() => _loading = false);
+                                if (mounted) {
+                                  setState(() => _loading = false);
+                                }
                               },
-                              icon: const Icon(Icons.play_circle_outline, size: 20),
-                              label: const Text('Ver demo con imagen de ejemplo'),
+                              icon: const Icon(Icons.play_circle_outline,
+                                  size: 20),
+                              label: Text(s.viewDemo),
                             ),
                           ],
                         ),
@@ -179,8 +202,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         itemCount: _scans.length,
                         itemBuilder: (context, i) {
                           final scan = _scans[i] as Map<String, dynamic>;
-                          final summary = scan['aiResults']?['combined']?['summary']
-                              as Map<String, dynamic>?;
+                          final summary = scan['aiResults']?['combined']
+                              ?['summary'] as Map<String, dynamic>?;
                           final status = summary?['statusLabel'] ?? '—';
                           final message = summary?['message'] ?? '';
                           final statusColor = _statusColor(summary?['status']);
@@ -188,10 +211,12 @@ class _HomeScreenState extends State<HomeScreen> {
                             margin: const EdgeInsets.only(bottom: 12),
                             child: ListTile(
                               leading: CircleAvatar(
-                                backgroundColor: statusColor.withValues(alpha: 0.2),
-                                child: Icon(Icons.analytics, color: statusColor),
+                                backgroundColor:
+                                    statusColor.withValues(alpha: 0.2),
+                                child:
+                                    Icon(Icons.analytics, color: statusColor),
                               ),
-                              title: Text('Escaneo ${i + 1}'),
+                              title: Text(s.scanN(i + 1)),
                               subtitle: Text(
                                 '$status · $message',
                                 maxLines: 2,
@@ -201,7 +226,8 @@ class _HomeScreenState extends State<HomeScreen> {
                               onTap: () {
                                 Navigator.of(context).push(
                                   MaterialPageRoute(
-                                    builder: (_) => ScanResultScreen(scan: scan),
+                                    builder: (_) =>
+                                        ScanResultScreen(scan: scan),
                                   ),
                                 );
                               },
@@ -211,25 +237,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          final navigator = Navigator.of(context);
-          final result = await navigator.push<Map<String, dynamic>>(
-            MaterialPageRoute(
-              builder: (_) => const UploadScreen(openCameraFirst: true),
-            ),
-          );
-          if (!mounted) return;
-          if (result != null) {
-            navigator.push(
-              MaterialPageRoute(
-                builder: (_) => ScanResultScreen(scan: result),
-              ),
-            );
-          }
-          _loadScans();
-        },
+        onPressed: () => _openUpload(cameraFirst: true),
         icon: const Icon(Icons.camera_alt),
-        label: const Text('Escanear con cámara'),
+        label: Text(s.scanWithCamera),
       ),
     );
   }
